@@ -1,0 +1,18 @@
+# Build
+*.o
+*.a
+*.so
+*.d
+lexer
+a.out
+core
+
+# macOS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
