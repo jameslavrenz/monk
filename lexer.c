@@ -3,16 +3,16 @@
 #include <stdbool.h>
 #include <string.h>
 
-typedef bool (*CharPredicate)(char);
+typedef bool (*CharPredicate)(unsigned char);
 
 static Token token_init(TokenType type, size_t start, size_t length);
 static Token read_ident_token(Lexer *lexer);
 static Token read_number_token(Lexer *lexer);
 static void read_char(Lexer *lexer);
-static char peek_char(Lexer *lexer);
+static char peek_char(const Lexer *lexer);
 static void skip_whitespace(Lexer *lexer);
-static bool is_ident_char(char ch);
-static bool is_digit(char ch);
+static bool is_ident_char(unsigned char ch);
+static bool is_digit(unsigned char ch);
 static const char *read_lexeme(Lexer *lexer, size_t *len, CharPredicate predicate);
 static TokenType lookup_identifier(const char *identifier, size_t len);
 
@@ -40,10 +40,10 @@ Token lexer_next_token(Lexer *lexer) {
 
 	skip_whitespace(lexer);
 
-	if (is_ident_char(lexer->ch))
+	if (is_ident_char((unsigned char)lexer->ch))
 		return read_ident_token(lexer);
 
-	if (is_digit(lexer->ch))
+	if (is_digit((unsigned char)lexer->ch))
 		return read_number_token(lexer);
 
 	size_t start = lexer->position;
@@ -153,7 +153,7 @@ static void read_char(Lexer *lexer) {
 	lexer->read_position++;
 }
 
-static char peek_char(Lexer *lexer) {
+static char peek_char(const Lexer *lexer) {
 	if (lexer->read_position >= lexer->input_len)
 		return '\0';
 	return lexer->input[lexer->read_position];
@@ -164,11 +164,11 @@ static void skip_whitespace(Lexer *lexer) {
 		read_char(lexer);
 }
 
-static bool is_ident_char(char ch) {
+static bool is_ident_char(unsigned char ch) {
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_';
 }
 
-static bool is_digit(char ch) {
+static bool is_digit(unsigned char ch) {
 	return ch >= '0' && ch <= '9';
 }
 
@@ -176,7 +176,7 @@ static const char *read_lexeme(Lexer *lexer, size_t *len, CharPredicate predicat
 
 	size_t start = lexer->position;
 
-	while (predicate(lexer->ch))
+	while (predicate((unsigned char)lexer->ch))
 		read_char(lexer);
 
 	if (len != NULL)

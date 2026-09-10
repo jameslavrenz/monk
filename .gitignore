@@ -4,6 +4,7 @@
 *.so
 *.d
 monk
+monk-sanitize
 a.out
 core
 

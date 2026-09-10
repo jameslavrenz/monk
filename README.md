@@ -28,7 +28,8 @@ make
 |---|---|
 | `make` / `make all` | Build the `monk` binary |
 | `make run` | Build and run the tests |
-| `make clean` | Remove object files and the binary |
+| `make test` | Compile `monk-sanitize` with ASan/UBSan from the `.c` files and run it |
+| `make clean` | Remove object files and binaries |
 | `make rebuild` | `clean`, then `all` |
 
 Tests live in `main.c`. Checks are ordinary `if`s (not `assert`), so they still run if the binary is built with `NDEBUG`. Each case checks token `type` and the span text, then that the next token is `TOKEN_TYPE_EOF` with `length == 0` at the end of the input.
