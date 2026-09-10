@@ -1,8 +1,8 @@
-# lexer
+# monk
 
-A small C lexer for a Monkey-style language. It turns source text into a stream of tokens (`let`, `fn`, `if`, `return`, identifiers, integers, and operators). Call `lexer_next_token` until you get `TOKEN_TYPE_EOF`.
+A C interpreter for a Monkey-style language. The program is called `monk`.
 
-There is no parser yet.
+Right now `monk` is a lexer: it turns source text into a stream of tokens (`let`, `fn`, `if`, `return`, identifiers, integers, and operators). Call `lexer_next_token` until you get `TOKEN_TYPE_EOF`. There is no parser yet.
 
 ## Files
 
@@ -21,12 +21,12 @@ The project is compiled as **C17** (`-std=c17 -Wall -Wextra -Wpedantic`).
 
 ```sh
 make
-./lexer
+./monk
 ```
 
 | Target | What it does |
 |---|---|
-| `make` / `make all` | Build the `lexer` binary |
+| `make` / `make all` | Build the `monk` binary |
 | `make run` | Build and run the tests |
 | `make clean` | Remove object files and the binary |
 | `make rebuild` | `clean`, then `all` |

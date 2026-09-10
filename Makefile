@@ -2,7 +2,7 @@ CC      = cc
 CFLAGS  = -std=c17 -Wall -Wextra -Wpedantic
 LDFLAGS =
 
-TARGET  = lexer
+TARGET  = monk
 SRCS    = lexer.c main.c
 OBJS    = $(SRCS:.c=.o)
 
