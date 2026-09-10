@@ -1,6 +1,6 @@
 #include "lexer.h"
 
-#include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -9,39 +9,50 @@ typedef struct {
 	const char *text;
 } ExpectedToken;
 
-static void assert_span(const char *input, const Token *token, const char *text) {
-	size_t len = strlen(text);
-
-	assert(token->length == len);
-	assert(memcmp(input + token->start, text, len) == 0);
+static const char *source_text(const char *input) {
+	return input != NULL ? input : "";
 }
 
-static void run_lexer_test(const char *input, const ExpectedToken *expected, size_t expected_count) {
+static bool check_span(const char *source, const Token *token, const char *text) {
+	size_t len = strlen(text);
 
-	Lexer *lexer = lexer_create(input);
-	assert(lexer != NULL);
+	return token->length == len && memcmp(source + token->start, text, len) == 0;
+}
+
+static bool run_lexer_test(const char *name, const char *input, const ExpectedToken *expected, size_t expected_count) {
+	const char *source = source_text(input);
+	Lexer lexer = lexer_init(input);
 
 	for (size_t i = 0; i < expected_count; i++) {
-		Token *token = lexer_next_token(lexer);
+		Token token = lexer_next_token(&lexer);
 
-		assert(token != NULL);
-		assert(token->type == expected[i].type);
-		assert_span(input, token, expected[i].text);
+		if (token.type != expected[i].type) {
+			fprintf(stderr, "FAIL %s: token %zu type %d, want %d\n",
+				name, i, (int)token.type, (int)expected[i].type);
+			return false;
+		}
 
-		token_destroy(token);
+		if (!check_span(source, &token, expected[i].text)) {
+			fprintf(stderr, "FAIL %s: token %zu span\n", name, i);
+			return false;
+		}
 	}
 
-	Token *eof = lexer_next_token(lexer);
-	assert(eof != NULL);
-	assert(eof->type == TOKEN_TYPE_EOF);
-	assert(eof->length == 0);
-	assert(eof->start == strlen(input));
-	token_destroy(eof);
+	Token eof = lexer_next_token(&lexer);
 
-	lexer_destroy(lexer);
+	if (eof.type != TOKEN_TYPE_EOF || eof.length != 0 || eof.start != strlen(source)) {
+		fprintf(stderr, "FAIL %s: EOF type %d start %zu length %zu, want start %zu\n",
+			name, (int)eof.type, eof.start, eof.length, strlen(source));
+		return false;
+	}
+
+	printf("%s passed\n", name);
+	return true;
 }
 
 int main(void) {
+	int failed = 0;
+
 	const char *input = "=+(){},;";
 
 	const ExpectedToken expected[] = {
@@ -55,9 +66,7 @@ int main(void) {
 		{ TOKEN_TYPE_SEMICOLON, ";" },
 	};
 
-	run_lexer_test(input, expected, sizeof(expected) / sizeof(expected[0]));
-
-	printf("first test passed!\n");
+	failed += !run_lexer_test("punctuation", input, expected, sizeof(expected) / sizeof(expected[0]));
 
 	const char *program =
 		"let five = 5; "
@@ -107,17 +116,13 @@ int main(void) {
 		{ TOKEN_TYPE_SEMICOLON, ";" },
 	};
 
-	run_lexer_test(program, expected_program, sizeof(expected_program) / sizeof(expected_program[0]));
-
-	printf("second test passed!\n");
+	failed += !run_lexer_test("program", program, expected_program, sizeof(expected_program) / sizeof(expected_program[0]));
 
 	const ExpectedToken expected_illegal[] = {
 		{ TOKEN_TYPE_ILLEGAL, "@" },
 	};
 
-	run_lexer_test("@", expected_illegal, sizeof(expected_illegal) / sizeof(expected_illegal[0]));
-
-	printf("third test passed!\n");
+	failed += !run_lexer_test("illegal", "@", expected_illegal, sizeof(expected_illegal) / sizeof(expected_illegal[0]));
 
 	const char *ops = "10 == 10 != 9 !true =";
 
@@ -132,9 +137,7 @@ int main(void) {
 		{ TOKEN_TYPE_ASSIGN, "=" },
 	};
 
-	run_lexer_test(ops, expected_ops, sizeof(expected_ops) / sizeof(expected_ops[0]));
-
-	printf("fourth test passed!\n");
+	failed += !run_lexer_test("operators", ops, expected_ops, sizeof(expected_ops) / sizeof(expected_ops[0]));
 
 	const char *arithmetic = "!-/*<>";
 
@@ -147,9 +150,7 @@ int main(void) {
 		{ TOKEN_TYPE_GT, ">" },
 	};
 
-	run_lexer_test(arithmetic, expected_arithmetic, sizeof(expected_arithmetic) / sizeof(expected_arithmetic[0]));
-
-	printf("fifth test passed!\n");
+	failed += !run_lexer_test("arithmetic", arithmetic, expected_arithmetic, sizeof(expected_arithmetic) / sizeof(expected_arithmetic[0]));
 
 	const char *full =
 		"let x = 10 * 2 / 1 - 5; "
@@ -205,8 +206,30 @@ int main(void) {
 		{ TOKEN_TYPE_SEMICOLON, ";" },
 	};
 
-	run_lexer_test(full, expected_full, sizeof(expected_full) / sizeof(expected_full[0]));
+	failed += !run_lexer_test("full", full, expected_full, sizeof(expected_full) / sizeof(expected_full[0]));
 
-	printf("sixth test passed!\n");
+	failed += !run_lexer_test("empty", "", NULL, 0);
+	failed += !run_lexer_test("null", NULL, NULL, 0);
+	failed += !run_lexer_test("whitespace", " \t\n\r ", NULL, 0);
+
+	const ExpectedToken expected_eq_assign[] = {
+		{ TOKEN_TYPE_EQ, "==" },
+		{ TOKEN_TYPE_ASSIGN, "=" },
+	};
+
+	failed += !run_lexer_test("triple-eq", "===", expected_eq_assign, sizeof(expected_eq_assign) / sizeof(expected_eq_assign[0]));
+
+	const ExpectedToken expected_illegals[] = {
+		{ TOKEN_TYPE_ILLEGAL, "@" },
+		{ TOKEN_TYPE_ILLEGAL, "$" },
+	};
+
+	failed += !run_lexer_test("illegals", "@$", expected_illegals, sizeof(expected_illegals) / sizeof(expected_illegals[0]));
+
+	if (failed != 0) {
+		fprintf(stderr, "%d test(s) failed\n", failed);
+		return 1;
+	}
+
 	return 0;
 }

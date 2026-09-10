@@ -1,22 +1,13 @@
 #include "lexer.h"
 
 #include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
 
 typedef bool (*CharPredicate)(char);
 
-struct Lexer {
-	const char *input;
-	size_t input_len;
-	size_t position;
-	size_t read_position;
-	char ch;
-};
-
-static Token *token_create(TokenType type, size_t start, size_t length);
-static Token *read_ident_token(Lexer *lexer);
-static Token *read_number_token(Lexer *lexer);
+static Token token_init(TokenType type, size_t start, size_t length);
+static Token read_ident_token(Lexer *lexer);
+static Token read_number_token(Lexer *lexer);
 static void read_char(Lexer *lexer);
 static char peek_char(Lexer *lexer);
 static void skip_whitespace(Lexer *lexer);
@@ -25,32 +16,27 @@ static bool is_digit(char ch);
 static const char *read_lexeme(Lexer *lexer, size_t *len, CharPredicate predicate);
 static TokenType lookup_identifier(const char *identifier, size_t len);
 
-Lexer *lexer_create(const char *input) {
+Lexer lexer_init(const char *input) {
 
-	Lexer *lexer = calloc(1, sizeof *lexer);
+	if (input == NULL)
+		input = "";
 
-	if (lexer == NULL)
-		return NULL;
-
-	lexer->input = input;
-	lexer->input_len = strlen(input);
-
-	read_char(lexer);
+	Lexer lexer = {
+		.input = input,
+		.input_len = strlen(input),
+		.position = 0,
+		.read_position = 0,
+		.ch = '\0',
+	};
+	
+	read_char(&lexer);
 
 	return lexer;
 }
 
-void lexer_destroy(Lexer *lexer) {
-	free(lexer);
-}
+Token lexer_next_token(Lexer *lexer) {
 
-void token_destroy(Token *token) {
-	free(token);
-}
-
-Token *lexer_next_token(Lexer *lexer) {
-
-	Token *token = NULL;
+	Token token;
 
 	skip_whitespace(lexer);
 
@@ -67,59 +53,59 @@ Token *lexer_next_token(Lexer *lexer) {
 		case '=':
 			if (peek_char(lexer) == '=') {
 				read_char(lexer);
-				token = token_create(TOKEN_TYPE_EQ, start, 2);
+				token = token_init(TOKEN_TYPE_EQ, start, 2);
 			} else {
-				token = token_create(TOKEN_TYPE_ASSIGN, start, 1);
+				token = token_init(TOKEN_TYPE_ASSIGN, start, 1);
 			}
 			break;
 		case '!':
 			if (peek_char(lexer) == '=') {
 				read_char(lexer);
-				token = token_create(TOKEN_TYPE_NOT_EQ, start, 2);
+				token = token_init(TOKEN_TYPE_NOT_EQ, start, 2);
 			} else {
-				token = token_create(TOKEN_TYPE_BANG, start, 1);
+				token = token_init(TOKEN_TYPE_BANG, start, 1);
 			}
 			break;
 		case ';':
-			token = token_create(TOKEN_TYPE_SEMICOLON, start, 1);
+			token = token_init(TOKEN_TYPE_SEMICOLON, start, 1);
 			break;
 		case '(':
-			token = token_create(TOKEN_TYPE_LPAREN, start, 1);
+			token = token_init(TOKEN_TYPE_LPAREN, start, 1);
 			break;
 		case ')':
-			token = token_create(TOKEN_TYPE_RPAREN, start, 1);
+			token = token_init(TOKEN_TYPE_RPAREN, start, 1);
 			break;
 		case ',':
-			token = token_create(TOKEN_TYPE_COMMA, start, 1);
+			token = token_init(TOKEN_TYPE_COMMA, start, 1);
 			break;
 		case '+':
-			token = token_create(TOKEN_TYPE_PLUS, start, 1);
+			token = token_init(TOKEN_TYPE_PLUS, start, 1);
 			break;
 		case '-':
-			token = token_create(TOKEN_TYPE_MINUS, start, 1);
+			token = token_init(TOKEN_TYPE_MINUS, start, 1);
 			break;
 		case '/':
-			token = token_create(TOKEN_TYPE_SLASH, start, 1);
+			token = token_init(TOKEN_TYPE_SLASH, start, 1);
 			break;
 		case '*':
-			token = token_create(TOKEN_TYPE_ASTERISK, start, 1);
+			token = token_init(TOKEN_TYPE_ASTERISK, start, 1);
 			break;
 		case '<':
-			token = token_create(TOKEN_TYPE_LT, start, 1);
+			token = token_init(TOKEN_TYPE_LT, start, 1);
 			break;
 		case '>':
-			token = token_create(TOKEN_TYPE_GT, start, 1);
+			token = token_init(TOKEN_TYPE_GT, start, 1);
 			break;
 		case '{':
-			token = token_create(TOKEN_TYPE_LBRACE, start, 1);
+			token = token_init(TOKEN_TYPE_LBRACE, start, 1);
 			break;
 		case '}':
-			token = token_create(TOKEN_TYPE_RBRACE, start, 1);
+			token = token_init(TOKEN_TYPE_RBRACE, start, 1);
 			break;
 		case '\0':
-			return token_create(TOKEN_TYPE_EOF, start, 0);
+			return token_init(TOKEN_TYPE_EOF, start, 0);
 		default:
-			token = token_create(TOKEN_TYPE_ILLEGAL, start, 1);
+			token = token_init(TOKEN_TYPE_ILLEGAL, start, 1);
 			break;
 
 	}
@@ -128,35 +114,31 @@ Token *lexer_next_token(Lexer *lexer) {
 	return token;
 }
 
-static Token *read_ident_token(Lexer *lexer) {
+static Token read_ident_token(Lexer *lexer) {
 	size_t start = lexer->position;
 	size_t len = 0;
 	const char *identifier = read_lexeme(lexer, &len, is_ident_char);
 	TokenType type = lookup_identifier(identifier, len);
 
-	return token_create(type, start, len);
+	return token_init(type, start, len);
 }
 
-static Token *read_number_token(Lexer *lexer) {
+static Token read_number_token(Lexer *lexer) {
 	size_t start = lexer->position;
 	size_t len = 0;
 
 	read_lexeme(lexer, &len, is_digit);
 
-	return token_create(TOKEN_TYPE_INT, start, len);
+	return token_init(TOKEN_TYPE_INT, start, len);
 }
 
-static Token *token_create(TokenType type, size_t start, size_t length) {
+static Token token_init(TokenType type, size_t start, size_t length) {
 
-	Token *token = malloc(sizeof *token);
-
-	if (token == NULL)
-		return NULL;
-
-	token->type = type;
-	token->start = start;
-	token->length = length;
-
+	Token token = {
+		.type = type,
+		.start = start,
+		.length = length,
+	};
 	return token;
 }
 

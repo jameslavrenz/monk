@@ -3,7 +3,13 @@
 
 #include <stddef.h>
 
-typedef struct Lexer Lexer;
+typedef struct Lexer {
+	const char *input;
+	size_t input_len;
+	size_t position;
+	size_t read_position;
+	char ch;
+} Lexer;
 
 typedef enum {
 	TOKEN_TYPE_ILLEGAL,
@@ -41,9 +47,7 @@ typedef struct {
 	size_t length;
 } Token;
 
-Lexer *lexer_create(const char *input);
-void lexer_destroy(Lexer *lexer);
-Token *lexer_next_token(Lexer *lexer);
-void token_destroy(Token *token);
+Lexer lexer_init(const char *input);
+Token lexer_next_token(Lexer *lexer);
 
 #endif

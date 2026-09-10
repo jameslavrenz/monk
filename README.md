@@ -13,7 +13,7 @@ Right now `monk` is a lexer: it turns source text into a stream of tokens (`let`
 | `main.c` | Tests |
 | `Makefile` | Build |
 
-`Lexer` is opaque. `Token` is a public struct: `type` plus a span (`start` and `length`) into the original input. The span is not a copy of the text.
+`Lexer` is a public struct (stack-allocated cursor). `Token` is a public struct: `type` plus a span (`start` and `length`) into the original input. The span is not a copy of the text. Callers should use `lexer_init` / `lexer_next_token` rather than poking lexer fields.
 
 ## Build and test
 
@@ -31,7 +31,9 @@ make
 | `make clean` | Remove object files and the binary |
 | `make rebuild` | `clean`, then `all` |
 
-Six tests run:
+Tests live in `main.c`. Checks are ordinary `if`s (not `assert`), so they still run if the binary is built with `NDEBUG`. Each case checks token `type` and the span text, then that the next token is `TOKEN_TYPE_EOF` with `length == 0` at the end of the input.
+
+Language cases:
 
 1. Punctuation: `=+(){},;`
 2. A short program with `let` / `fn` / identifiers / integers
@@ -40,7 +42,13 @@ Six tests run:
 5. Remaining one-character operators: `!-/*<>`
 6. A fuller program mixing `let`, `if` / `else`, `return`, `true` / `false`, `==` / `!=`, and `+ - * / < >`
 
-Each test checks token `type` and the span text, then that the next token is `TOKEN_TYPE_EOF` with `length == 0` at the end of the input.
+API / edge cases:
+
+7. Empty string: first token is EOF
+8. `NULL` input: treated as empty (same as 7)
+9. Whitespace only (` `, tab, `\n`, `\r`): first token is EOF
+10. `===` is `EQ` then `ASSIGN`
+11. Consecutive illegal characters: `@$`
 
 ## Public API
 
@@ -51,29 +59,26 @@ typedef struct {
 	size_t length;
 } Token;
 
-Lexer *lexer_create(const char *input);
-void lexer_destroy(Lexer *lexer);
-Token *lexer_next_token(Lexer *lexer);
-void token_destroy(Token *token);
+Lexer lexer_init(const char *input);
+Token lexer_next_token(Lexer *lexer);
 ```
 
-- `lexer_create` stores the pointer to `input`, not a copy of the bytes. The string must stay alive as long as any `Token` span is used.
-- Each `Token *` from `lexer_next_token` is owned by the caller. Free it with `token_destroy`.
-- `start` / `length` are a half-open range: bytes `input[start .. start+length)`. EOF has `length == 0`.
-- `token_create` is internal. Only the lexer constructs tokens.
+- `lexer_init` returns a `Lexer` by value. Put it on the stack and pass its address to `lexer_next_token`.
+- `lexer_init` stores the pointer to `input`, not a copy of the bytes. The string must stay alive as long as any `Token` span is used. `NULL` is treated as `""`.
+- `lexer_next_token` returns a `Token` by value. There is nothing to free.
+- `start` / `length` are a half-open range: bytes `input[start .. start+length)`. EOF has `length == 0`. For `NULL` input, spans are into the empty string.
+- `token_init` is internal. Only the lexer constructs tokens.
 
 Typical loop:
 
 ```c
-Lexer *lexer = lexer_create(source);
-Token *token;
+Lexer lexer = lexer_init(source);
+Token token;
 
-while ((token = lexer_next_token(lexer))->type != TOKEN_TYPE_EOF) {
-	/* use token->type and source[token->start .. token->start + token->length) */
-	token_destroy(token);
-}
-token_destroy(token); /* the EOF token */
-lexer_destroy(lexer);
+do {
+	token = lexer_next_token(&lexer);
+	/* use token.type and source[token.start .. token.start + token.length) */
+} while (token.type != TOKEN_TYPE_EOF);
 ```
 
 ## Tokens
@@ -130,7 +135,7 @@ The lexer keeps both `position` (current character) and `read_position` (look-ah
 ## Naming
 
 - Types: `Lexer`, `Token`, `TokenType`, `CharPredicate`
-- Functions: `lexer_create`, `lexer_destroy`, `token_destroy`, `read_char`, `peek_char`, `read_lexeme`
+- Functions: `lexer_init`, `lexer_next_token`, `read_char`, `peek_char`, `read_lexeme`
 - Enum values: `TOKEN_TYPE_IDENT`, `TOKEN_TYPE_EQ`, `TOKEN_TYPE_NOT_EQ`
 
 Public functions are `type_verb`. File-private lexer helpers drop the `lexer_` prefix (`read_char`, `skip_whitespace`, `peek_char`).
