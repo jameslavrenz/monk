@@ -17,6 +17,8 @@ There is no parser yet.
 
 ## Build and test
 
+The project is compiled as **C17** (`-std=c17 -Wall -Wextra -Wpedantic`).
+
 ```sh
 make
 ./lexer
