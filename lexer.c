@@ -14,10 +14,11 @@ struct Lexer {
 	char ch;
 };
 
-static Token *token_create(TokenType type, char *literal);
+static Token *token_create(TokenType type, size_t start, size_t length);
 static Token *read_ident_token(Lexer *lexer);
 static Token *read_number_token(Lexer *lexer);
 static void read_char(Lexer *lexer);
+static char peek_char(Lexer *lexer);
 static void skip_whitespace(Lexer *lexer);
 static bool is_ident_char(char ch);
 static bool is_digit(char ch);
@@ -44,9 +45,6 @@ void lexer_destroy(Lexer *lexer) {
 }
 
 void token_destroy(Token *token) {
-	if (token == NULL)
-		return;
-	free(token->literal);
 	free(token);
 }
 
@@ -62,36 +60,66 @@ Token *lexer_next_token(Lexer *lexer) {
 	if (is_digit(lexer->ch))
 		return read_number_token(lexer);
 
+	size_t start = lexer->position;
+
 	switch (lexer->ch) {
 
 		case '=':
-			token = token_create(TOKEN_TYPE_ASSIGN, NULL);
+			if (peek_char(lexer) == '=') {
+				read_char(lexer);
+				token = token_create(TOKEN_TYPE_EQ, start, 2);
+			} else {
+				token = token_create(TOKEN_TYPE_ASSIGN, start, 1);
+			}
+			break;
+		case '!':
+			if (peek_char(lexer) == '=') {
+				read_char(lexer);
+				token = token_create(TOKEN_TYPE_NOT_EQ, start, 2);
+			} else {
+				token = token_create(TOKEN_TYPE_BANG, start, 1);
+			}
 			break;
 		case ';':
-			token = token_create(TOKEN_TYPE_SEMICOLON, NULL);
+			token = token_create(TOKEN_TYPE_SEMICOLON, start, 1);
 			break;
 		case '(':
-			token = token_create(TOKEN_TYPE_LPAREN, NULL);
+			token = token_create(TOKEN_TYPE_LPAREN, start, 1);
 			break;
 		case ')':
-			token = token_create(TOKEN_TYPE_RPAREN, NULL);
+			token = token_create(TOKEN_TYPE_RPAREN, start, 1);
 			break;
 		case ',':
-			token = token_create(TOKEN_TYPE_COMMA, NULL);
+			token = token_create(TOKEN_TYPE_COMMA, start, 1);
 			break;
 		case '+':
-			token = token_create(TOKEN_TYPE_PLUS, NULL);
+			token = token_create(TOKEN_TYPE_PLUS, start, 1);
+			break;
+		case '-':
+			token = token_create(TOKEN_TYPE_MINUS, start, 1);
+			break;
+		case '/':
+			token = token_create(TOKEN_TYPE_SLASH, start, 1);
+			break;
+		case '*':
+			token = token_create(TOKEN_TYPE_ASTERISK, start, 1);
+			break;
+		case '<':
+			token = token_create(TOKEN_TYPE_LT, start, 1);
+			break;
+		case '>':
+			token = token_create(TOKEN_TYPE_GT, start, 1);
 			break;
 		case '{':
-			token = token_create(TOKEN_TYPE_LBRACE, NULL);
+			token = token_create(TOKEN_TYPE_LBRACE, start, 1);
 			break;
 		case '}':
-			token = token_create(TOKEN_TYPE_RBRACE, NULL);
+			token = token_create(TOKEN_TYPE_RBRACE, start, 1);
 			break;
 		case '\0':
-			return token_create(TOKEN_TYPE_EOF, NULL);
+			return token_create(TOKEN_TYPE_EOF, start, 0);
 		default:
-			token = token_create(TOKEN_TYPE_ILLEGAL, NULL);
+			token = token_create(TOKEN_TYPE_ILLEGAL, start, 1);
 			break;
 
 	}
@@ -101,36 +129,33 @@ Token *lexer_next_token(Lexer *lexer) {
 }
 
 static Token *read_ident_token(Lexer *lexer) {
+	size_t start = lexer->position;
 	size_t len = 0;
-	char *literal = NULL;
-
 	const char *identifier = read_lexeme(lexer, &len, is_ident_char);
 	TokenType type = lookup_identifier(identifier, len);
 
-	if (type == TOKEN_TYPE_IDENT)
-		literal = strndup(identifier, len);
-
-	return token_create(type, literal);
+	return token_create(type, start, len);
 }
 
 static Token *read_number_token(Lexer *lexer) {
+	size_t start = lexer->position;
 	size_t len = 0;
-	const char *number = read_lexeme(lexer, &len, is_digit);
-	char *literal = strndup(number, len);
 
-	return token_create(TOKEN_TYPE_INT, literal);
+	read_lexeme(lexer, &len, is_digit);
+
+	return token_create(TOKEN_TYPE_INT, start, len);
 }
 
-static Token *token_create(TokenType type, char *literal) {
+static Token *token_create(TokenType type, size_t start, size_t length) {
 
 	Token *token = malloc(sizeof *token);
 
-	if (token == NULL) {
+	if (token == NULL)
 		return NULL;
-	}
 
 	token->type = type;
-	token->literal = literal;
+	token->start = start;
+	token->length = length;
 
 	return token;
 }
@@ -144,6 +169,12 @@ static void read_char(Lexer *lexer) {
 
 	lexer->position = lexer->read_position;
 	lexer->read_position++;
+}
+
+static char peek_char(Lexer *lexer) {
+	if (lexer->read_position >= lexer->input_len)
+		return '\0';
+	return lexer->input[lexer->read_position];
 }
 
 static void skip_whitespace(Lexer *lexer) {
@@ -174,10 +205,20 @@ static const char *read_lexeme(Lexer *lexer, size_t *len, CharPredicate predicat
 
 static TokenType lookup_identifier(const char *identifier, size_t len) {
 
-	if (len == 3 && strncmp(identifier, "let", len) == 0)
-		return TOKEN_TYPE_LET;
 	if (len == 2 && strncmp(identifier, "fn", len) == 0)
 		return TOKEN_TYPE_FUNCTION;
+	if (len == 2 && strncmp(identifier, "if", len) == 0)
+		return TOKEN_TYPE_IF;
+	if (len == 3 && strncmp(identifier, "let", len) == 0)
+		return TOKEN_TYPE_LET;
+	if (len == 4 && strncmp(identifier, "true", len) == 0)
+		return TOKEN_TYPE_TRUE;
+	if (len == 4 && strncmp(identifier, "else", len) == 0)
+		return TOKEN_TYPE_ELSE;
+	if (len == 5 && strncmp(identifier, "false", len) == 0)
+		return TOKEN_TYPE_FALSE;
+	if (len == 6 && strncmp(identifier, "return", len) == 0)
+		return TOKEN_TYPE_RETURN;
 
 	return TOKEN_TYPE_IDENT;
 }
