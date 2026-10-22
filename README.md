@@ -2,7 +2,16 @@
 
 A C interpreter for a Monkey-style language. The program is called `monk`.
 
-Right now `monk` is a lexer: it turns source text into a stream of tokens (`let`, `fn`, `if`, `return`, identifiers, integers, and operators). Call `lexer_next_token` until you get `TOKEN_TYPE_EOF`. There is no parser yet.
+## Status
+
+The lexer works. It turns source text into a stream of tokens (`let`, `fn`, `if`, `return`, identifiers, integers, prefixes, infix operators, and punctuation). Call `lexer_next_token` until you get `TOKEN_TYPE_EOF`. `main.c` tests that stream. There is no parser or evaluator yet.
+
+Next, in order:
+
+1. **Parser.** Consume the token stream and build an abstract syntax tree. A program is a sequence of statements: `let` bindings, `return` statements, and expression statements. Expressions cover identifiers, integers, `true` / `false`, prefix operators (`!`, `-`), infix operators, grouped expressions, `if` / `else`, function literals (`fn`), and calls.
+2. **Evaluator.** Walk that tree recursively. Each node produces a value: literals and operators yield integers or booleans, identifiers yield the value they are bound to, `if` selects a branch, a call runs the function body, and `return` yields the returned value.
+
+The sections below describe the lexer as it is now.
 
 ## Files
 
