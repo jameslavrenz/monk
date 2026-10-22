@@ -1,5 +1,5 @@
 CC      = cc
-CFLAGS  = -std=c17 -Wall -Wextra -Wpedantic
+CFLAGS  = -std=c23 -Wall -Wextra -Wpedantic
 LDFLAGS =
 SANITIZE = -fsanitize=address,undefined
 

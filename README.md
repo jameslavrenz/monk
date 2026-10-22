@@ -26,7 +26,7 @@ The sections below describe the lexer as it is now.
 
 ## Build and test
 
-The project is compiled as **C17** (`-std=c17 -Wall -Wextra -Wpedantic`).
+The project is written and compiled as **C23** (`-std=c23 -Wall -Wextra -Wpedantic`). `bool` is a keyword, null pointers are `nullptr`, and `TokenType` has a fixed underlying type.
 
 ```sh
 make
@@ -55,7 +55,7 @@ Language cases:
 API / edge cases:
 
 7. Empty string: first token is EOF
-8. `NULL` input: treated as empty (same as 7)
+8. `nullptr` input: treated as empty (same as 7)
 9. Whitespace only (` `, tab, `\n`, `\r`): first token is EOF
 10. `===` is `EQ` then `ASSIGN`
 11. Consecutive illegal characters: `@$`
@@ -69,14 +69,14 @@ typedef struct {
 	size_t length;
 } Token;
 
-Lexer lexer_init(const char *input);
-Token lexer_next_token(Lexer *lexer);
+[[nodiscard]] Lexer lexer_init(const char *input);
+[[nodiscard]] Token lexer_next_token(Lexer *lexer);
 ```
 
 - `lexer_init` returns a `Lexer` by value. Put it on the stack and pass its address to `lexer_next_token`.
-- `lexer_init` stores the pointer to `input`, not a copy of the bytes. The string must stay alive as long as any `Token` span is used. `NULL` is treated as `""`.
+- `lexer_init` stores the pointer to `input`, not a copy of the bytes. The string must stay alive as long as any `Token` span is used. `nullptr` is treated as `""`.
 - `lexer_next_token` returns a `Token` by value. There is nothing to free.
-- `start` / `length` are a half-open range: bytes `input[start .. start+length)`. EOF has `length == 0`. For `NULL` input, spans are into the empty string.
+- `start` / `length` are a half-open range: bytes `input[start .. start+length)`. EOF has `length == 0`. For `nullptr` input, spans are into the empty string.
 - `token_init` is internal. Only the lexer constructs tokens.
 
 Typical loop:

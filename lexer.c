@@ -1,6 +1,5 @@
 #include "lexer.h"
 
-#include <stdbool.h>
 #include <string.h>
 
 typedef bool (*CharPredicate)(unsigned char);
@@ -18,7 +17,7 @@ static TokenType lookup_identifier(const char *identifier, size_t len);
 
 Lexer lexer_init(const char *input) {
 
-	if (input == NULL)
+	if (input == nullptr)
 		input = "";
 
 	Lexer lexer = {
@@ -179,7 +178,7 @@ static const char *read_lexeme(Lexer *lexer, size_t *len, CharPredicate predicat
 	while (predicate((unsigned char)lexer->ch))
 		read_char(lexer);
 
-	if (len != NULL)
+	if (len != nullptr)
 		*len = lexer->position - start;
 
 	return lexer->input + start;

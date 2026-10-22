@@ -1,6 +1,5 @@
 #include "lexer.h"
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -10,7 +9,7 @@ typedef struct {
 } ExpectedToken;
 
 static const char *source_text(const char *input) {
-	return input != NULL ? input : "";
+	return input != nullptr ? input : "";
 }
 
 static bool check_span(const char *source, const Token *token, const char *text) {
@@ -208,9 +207,9 @@ int main(void) {
 
 	failed += !run_lexer_test("full", full, expected_full, sizeof(expected_full) / sizeof(expected_full[0]));
 
-	failed += !run_lexer_test("empty", "", NULL, 0);
-	failed += !run_lexer_test("null", NULL, NULL, 0);
-	failed += !run_lexer_test("whitespace", " \t\n\r ", NULL, 0);
+	failed += !run_lexer_test("empty", "", nullptr, 0);
+	failed += !run_lexer_test("null", nullptr, nullptr, 0);
+	failed += !run_lexer_test("whitespace", " \t\n\r ", nullptr, 0);
 
 	const ExpectedToken expected_eq_assign[] = {
 		{ TOKEN_TYPE_EQ, "==" },

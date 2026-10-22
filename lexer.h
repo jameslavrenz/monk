@@ -11,7 +11,7 @@ typedef struct Lexer {
 	char ch;
 } Lexer;
 
-typedef enum {
+typedef enum TokenType : int {
 	TOKEN_TYPE_ILLEGAL,
 	TOKEN_TYPE_EOF,
 	TOKEN_TYPE_IDENT,
@@ -47,7 +47,7 @@ typedef struct {
 	size_t length;
 } Token;
 
-Lexer lexer_init(const char *input);
-Token lexer_next_token(Lexer *lexer);
+[[nodiscard]] Lexer lexer_init(const char *input);
+[[nodiscard]] Token lexer_next_token(Lexer *lexer);
 
 #endif
