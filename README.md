@@ -13,6 +13,14 @@ Next, in order:
 
 The sections below describe the lexer as it is now.
 
+## Engineering Highlights
+
+- **Current implementation:** A small **C23 lexer**, not yet a working interpreter; parsing, AST construction, and evaluation are explicitly planned rather than claimed as implemented ([status](#status)).
+- **Zero-copy tokens:** Tokens return a type plus a byte span into caller-owned source text; stack-allocated lexer state and by-value token results avoid per-token allocation ([public API](#public-api)).
+- **Bounded lookahead design:** Single-character lookahead handles `==` and `!=`; identifier, integer, keyword, whitespace, and illegal-character cases have documented behavior ([lexing algorithm](#how-lexer_next_token-works), [token reference](#tokens)).
+- **Defensive edge-case tests:** Checks empty/null input, whitespace, invalid characters, operator ambiguity, and end-of-input spans ([test cases](#build-and-test), [test driver](main.c)).
+- **Build validation:** Strict C23 compiler warnings; `make test` runs the lexer tests under AddressSanitizer and UndefinedBehaviorSanitizer ([build instructions](#build-and-test), [Makefile](Makefile)).
+
 ## Files
 
 | File | Role |
